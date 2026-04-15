@@ -1,0 +1,616 @@
+openapi: 3.0.0
+info:
+  title: Ingredient Management API
+  description: API pour la gestion des ingrédients dans une application de cuisine
+  version: 1.0.0
+  contact:
+    name: Support API
+    email: support@ingredients.local
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080/api
+    description: Serveur de développement
+  - url: https://api.ingredients.local/api
+    description: Serveur de production
+
+tags:
+  - name: Ingredients
+    description: Opérations sur les ingrédients
+  - name: Categories
+    description: Opérations sur les catégories d'ingrédients
+
+paths:
+  /ingredients:
+    get:
+      tags:
+        - Ingredients
+      summary: Récupérer la liste de tous les ingrédients
+      description: Retourne une liste paginée de tous les ingrédients disponibles
+      operationId: getAllIngredients
+      parameters:
+        - name: page
+          in: query
+          description: Numéro de page (commence à 0)
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          description: Nombre d'éléments par page
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+        - name: sort
+          in: query
+          description: Critère de tri (ex. "name,asc")
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Liste des ingrédients récupérée avec succès
+          headers:
+            X-Total-Count:
+              schema:
+                type: integer
+              description: Nombre total d'ingrédients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ingredient'
+        '400':
+          description: Paramètres de requête invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Ingredients
+      summary: Créer un nouvel ingrédient
+      description: Crée un nouvel ingrédient dans la base de données
+      operationId: createIngredient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIngredientRequest'
+      responses:
+        '201':
+          description: Ingrédient créé avec succès
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL de la ressource créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+        '400':
+          description: Données d'entrée invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Ingrédient déjà existant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ingredients/{id}:
+    get:
+      tags:
+        - Ingredients
+      summary: Récupérer un ingrédient par son ID
+      description: Retourne les détails d'un ingrédient spécifique
+      operationId: getIngredientById
+      parameters:
+        - name: id
+          in: path
+          description: Identifiant unique de l'ingrédient
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Ingrédient trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+        '404':
+          description: Ingrédient non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Ingredients
+      summary: Mettre à jour un ingrédient
+      description: Met à jour les informations d'un ingrédient existant
+      operationId: updateIngredient
+      parameters:
+        - name: id
+          in: path
+          description: Identifiant unique de l'ingrédient
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIngredientRequest'
+      responses:
+        '200':
+          description: Ingrédient mis à jour avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+        '400':
+          description: Données d'entrée invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ingrédient non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Ingredients
+      summary: Supprimer un ingrédient
+      description: Supprime un ingrédient de la base de données
+      operationId: deleteIngredient
+      parameters:
+        - name: id
+          in: path
+          description: Identifiant unique de l'ingrédient
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Ingrédient supprimé avec succès
+        '404':
+          description: Ingrédient non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ingredients/search:
+    get:
+      tags:
+        - Ingredients
+      summary: Rechercher des ingrédients
+      description: Recherche des ingrédients par nom, catégorie ou autres critères
+      operationId: searchIngredients
+      parameters:
+        - name: query
+          in: query
+          description: Terme de recherche sur le nom
+          required: false
+          schema:
+            type: string
+        - name: categoryId
+          in: query
+          description: ID de la catégorie pour filtrer
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Résultats de recherche
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ingredient'
+        '400':
+          description: Paramètres de recherche invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: Récupérer la liste de toutes les catégories
+      description: Retourne une liste de toutes les catégories d'ingrédients
+      operationId: getAllCategories
+      responses:
+        '200':
+          description: Liste des catégories récupérée avec succès
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+    post:
+      tags:
+        - Categories
+      summary: Créer une nouvelle catégorie
+      description: Crée une nouvelle catégorie d'ingrédients
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        '201':
+          description: Catégorie créée avec succès
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL de la ressource créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Données d'entrée invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /categories/{id}:
+    get:
+      tags:
+        - Categories
+      summary: Récupérer une catégorie par son ID
+      description: Retourne les détails d'une catégorie spécifique
+      operationId: getCategoryById
+      parameters:
+        - name: id
+          in: path
+          description: Identifiant unique de la catégorie
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Catégorie trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '404':
+          description: Catégorie non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Categories
+      summary: Mettre à jour une catégorie
+      description: Met à jour les informations d'une catégorie existante
+      operationId: updateCategory
+      parameters:
+        - name: id
+          in: path
+          description: Identifiant unique de la catégorie
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+      responses:
+        '200':
+          description: Catégorie mise à jour avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Données d'entrée invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Catégorie non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Categories
+      summary: Supprimer une catégorie
+      description: Supprime une catégorie de la base de données
+      operationId: deleteCategory
+      parameters:
+        - name: id
+          in: path
+          description: Identifiant unique de la catégorie
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Catégorie supprimée avec succès
+        '404':
+          description: Catégorie non trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Ingredient:
+      type: object
+      required:
+        - id
+        - name
+        - category
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identifiant unique de l'ingrédient
+          example: 1
+        name:
+          type: string
+          description: Nom de l'ingrédient
+          minLength: 1
+          maxLength: 255
+          example: "Tomate"
+        description:
+          type: string
+          description: Description détaillée de l'ingrédient
+          example: "Tomate fraîche rouge"
+        category:
+          $ref: '#/components/schemas/Category'
+        price:
+          type: number
+          format: double
+          description: Prix de l'ingrédient (en euros)
+          example: 2.50
+          minimum: 0
+        unit:
+          type: string
+          description: Unité de mesure (kg, l, pièce, etc.)
+          example: "kg"
+        quantity:
+          type: number
+          format: double
+          description: Quantité disponible
+          example: 50.0
+          minimum: 0
+        expirationDate:
+          type: string
+          format: date
+          description: Date d'expiration
+          example: "2026-12-31"
+        createdAt:
+          type: string
+          format: date-time
+          description: Date de création
+          example: "2026-04-15T10:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Date de dernière modification
+          example: "2026-04-15T10:30:00Z"
+
+    CreateIngredientRequest:
+      type: object
+      required:
+        - name
+        - categoryId
+      properties:
+        name:
+          type: string
+          description: Nom de l'ingrédient
+          minLength: 1
+          maxLength: 255
+          example: "Tomate"
+        description:
+          type: string
+          description: Description de l'ingrédient
+          example: "Tomate fraîche rouge"
+        categoryId:
+          type: integer
+          format: int64
+          description: ID de la catégorie
+          example: 1
+        price:
+          type: number
+          format: double
+          description: Prix de l'ingrédient
+          example: 2.50
+          minimum: 0
+        unit:
+          type: string
+          description: Unité de mesure
+          example: "kg"
+        quantity:
+          type: number
+          format: double
+          description: Quantité disponible
+          example: 50.0
+          minimum: 0
+        expirationDate:
+          type: string
+          format: date
+          description: Date d'expiration
+          example: "2026-12-31"
+
+    UpdateIngredientRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Nom de l'ingrédient
+          minLength: 1
+          maxLength: 255
+          example: "Tomate"
+        description:
+          type: string
+          description: Description de l'ingrédient
+          example: "Tomate fraîche rouge"
+        categoryId:
+          type: integer
+          format: int64
+          description: ID de la catégorie
+          example: 1
+        price:
+          type: number
+          format: double
+          description: Prix de l'ingrédient
+          example: 2.50
+          minimum: 0
+        unit:
+          type: string
+          description: Unité de mesure
+          example: "kg"
+        quantity:
+          type: number
+          format: double
+          description: Quantité disponible
+          example: 50.0
+          minimum: 0
+        expirationDate:
+          type: string
+          format: date
+          description: Date d'expiration
+          example: "2026-12-31"
+
+    Category:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identifiant unique de la catégorie
+          example: 1
+        name:
+          type: string
+          description: Nom de la catégorie
+          minLength: 1
+          maxLength: 255
+          example: "Fruits et Légumes"
+        description:
+          type: string
+          description: Description de la catégorie
+          example: "Fruits et légumes frais"
+        createdAt:
+          type: string
+          format: date-time
+          description: Date de création
+          example: "2026-04-15T10:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Date de dernière modification
+          example: "2026-04-15T10:30:00Z"
+
+    CreateCategoryRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Nom de la catégorie
+          minLength: 1
+          maxLength: 255
+          example: "Fruits et Légumes"
+        description:
+          type: string
+          description: Description de la catégorie
+          example: "Fruits et légumes frais"
+
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Nom de la catégorie
+          minLength: 1
+          maxLength: 255
+          example: "Fruits et Légumes"
+        description:
+          type: string
+          description: Description de la catégorie
+          example: "Fruits et légumes frais"
+
+    ErrorResponse:
+      type: object
+      required:
+        - timestamp
+        - status
+        - error
+        - message
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp de l'erreur
+          example: "2026-04-15T10:30:00Z"
+        status:
+          type: integer
+          description: Code de statut HTTP
+          example: 400
+        error:
+          type: string
+          description: Type d'erreur
+          example: "Bad Request"
+        message:
+          type: string
+          description: Message d'erreur détaillé
+          example: "Le champ 'name' est requis"
+        path:
+          type: string
+          description: Chemin de la requête
+          example: "/api/ingredients"
